@@ -1,0 +1,4 @@
+numpy>=1.24
+sympy>=1.12
+# optional, for check_render.py:
+# playwright>=1.40

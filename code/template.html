@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive real pencil of quartic surfaces: stop on each real line and watch the nodes of a plane section add up to the local index.">
+<title>Lines in a Quartic Pencil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;}
+img{max-width:100%;}
+[hidden]{display:none!important;}
+:root{
+  --bg:#F3F5F7; --panel:#FFFFFF; --ink:#17212B; --muted:#5A6774; --rule:#D8DEE4; --soft:#EAEEF2;
+  --surf:#3F7FA0; --surf2:#C9A27A; --line:#D2461E; --plane:#6B5BD6; --node:#B07A00;
+  --pos:#2E7D4F; --neg:#B23A30; --ball:#DDE3E9;
+  --serif:"STIX Two Text", "STIX Two", "Cambria Math", Georgia, serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1318; --panel:#141C23; --ink:#E3E9EF; --muted:#8FA0AE; --rule:#26323D; --soft:#1B252E;
+    --surf:#6FB2D2; --surf2:#D9A870; --line:#FF7A4D; --plane:#9C8CFF; --node:#F2C14E;
+    --pos:#5BC48A; --neg:#F07268; --ball:#1A242D;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1318; --panel:#141C23; --ink:#E3E9EF; --muted:#8FA0AE; --rule:#26323D; --soft:#1B252E;
+  --surf:#6FB2D2; --surf2:#D9A870; --line:#FF7A4D; --plane:#9C8CFF; --node:#F2C14E;
+  --pos:#5BC48A; --neg:#F07268; --ball:#1A242D;
+}
+html,body{background:var(--bg);color:var(--ink);}
+body{font-family:var(--sans);font-size:14px;line-height:1.5;padding-inline:clamp(16px,3vw,32px);padding-block:20px 40px;}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:18px;}
+header{display:grid;gap:4px;}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(24px,3.2vw,34px);line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-0.005em;}
+.lede{color:var(--muted);max-width:72ch;margin:0;}
+.math{font-family:var(--serif);font-size:1.08em;}
+.app{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:start;}
+@media (max-width:920px){.app{grid-template-columns:minmax(0,1fr);}}
+.viewer{position:relative;background:var(--panel);border:1px solid var(--rule);border-radius:10px;overflow:hidden;}
+#gl{display:block;width:100%;aspect-ratio:1/1;max-height:78vh;touch-action:none;cursor:grab;}
+#gl:active{cursor:grabbing;}
+.hud{position:absolute;left:12px;top:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;}
+.tag{font-family:var(--mono);font-size:12px;background:color-mix(in srgb,var(--panel) 82%,transparent);border:1px solid var(--rule);border-radius:6px;padding:2px 8px;}
+.hint{position:absolute;right:12px;top:12px;font-size:12px;color:var(--muted);pointer-events:none;}
+.legend{position:absolute;left:12px;bottom:10px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);pointer-events:none;}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+.side{display:grid;gap:14px;}
+.leftcol{display:grid;gap:16px;min-width:0;}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;display:grid;gap:10px;}
+.card h2{font-family:var(--serif);font-weight:600;font-size:19px;margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+button{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink);background:var(--soft);border:1px solid var(--rule);border-radius:7px;padding:6px 12px;cursor:pointer;}
+button:hover{border-color:var(--muted);}
+button:focus-visible,input:focus-visible{outline:2px solid var(--plane);outline-offset:2px;}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+input[type=range]{width:100%;accent-color:var(--plane);}
+.timeline{position:relative;height:34px;}
+.timeline svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.chip{font-family:var(--mono);font-size:13px;border-radius:999px;padding:2px 10px;border:1px solid currentColor;}
+.chip.pos{color:var(--pos);} .chip.neg{color:var(--neg);}
+.muted{color:var(--muted);}
+#inset{display:block;width:100%;aspect-ratio:3/2;background:var(--soft);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+th{font-weight:600;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+td{padding:5px 6px;border-bottom:1px solid var(--soft);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+tr.sum td{border-top:1px solid var(--rule);border-bottom:none;font-weight:500;}
+.tablewrap{overflow-x:auto;}
+.bar{height:8px;border-radius:2px;display:inline-block;vertical-align:middle;}
+.formula{font-family:var(--serif);font-size:15.5px;background:var(--soft);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:nowrap;}
+.notes{display:grid;gap:8px;color:var(--muted);max-width:80ch;font-size:13px;}
+.notes p{margin:0;}
+.offline{opacity:.55;}
+.check{font-size:12px;color:var(--muted);}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Lines in a quartic pencil</h1>
+    <p class="lede">Members <span class="math">X<sub>λ</sub> = {f − λQ = 0}</span> of a real pencil of quartic surfaces in ℝℙ³, shown in the chart <span class="math">w = 1</span>. Of the 320 complex lines in the pencil, <span id="nreal">12</span> are real. Each one lies on a single member. Stop there, cut with a plane through the line, and watch the three nodes of the plane section add up to the local index, marked at <span class="math">Q</span>.</p>
+  </header>
+
+  <div class="app">
+    <div class="leftcol">
+    <div class="viewer">
+      <canvas id="gl" aria-label="Rendered quartic surface; drag to rotate, scroll to zoom"></canvas>
+      <div class="hud"><span class="tag" id="hudLam">λ = 0</span><span class="tag" id="hudLine" hidden></span></div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--surf)"></span>f &gt; λQ side</span>
+        <span><span class="sw" style="background:var(--surf2)"></span>f &lt; λQ side</span>
+        <span><span class="sw" style="background:var(--line)"></span>line L</span>
+        <span><span class="sw" style="background:var(--plane)"></span>plane H</span>
+        <span><span class="sw" style="background:var(--node)"></span>nodes</span>
+      </div>
+      <div class="hint">drag to rotate · scroll to zoom</div>
+    </div>
+    <section class="notes">
+    <p><b style="color:var(--ink)">How to read it.</b> In the plane H, the section H ∩ X<sub>λ</sub> is the line L together with a cubic curve (dashed). The cubic meets L in three points, the nodes of the section; they are where H is tangent to the surface. At a node p, Q(p)/F<sub>⊥</sub>(p) is how far the surface moves when λ changes (the displacement), and F<sub>H</sub>′(p) is how fast the tangent plane turns away from H along L (the rotation). Rotating H moves the nodes and changes every individual term, but the sum stays fixed: it is the obstruction to deforming L to nearby members, and its sign is the local index over ℝ.</p>
+    <p><b style="color:var(--ink)">The pencil.</b> f is a random Kostlan quartic and Q = (x² + y² + z² + w²)² + 0.12·g for another random quartic g. Q is positive on ℝℙ³, so the real members are the level sets of f/Q, and λ runs over [min f/Q, max f/Q]. All 320 lines were found by homotopy continuation. The picture shows the part of the chart inside a ball of radius 3.3.</p>
+    <p><b style="color:var(--ink)">Conventions.</b> Signs use the Kass–Wickelgren chart S = span(e₀ + a e₂ + b e₃, e₁ + c e₂ + d e₃), the monomial basis u⁴, …, r⁴, and the determinant det[Q|<sub>L</sub>, uF₁, uF₂, rF₁, rF₂]. They agree across random changes of basis and between charts. A different overall convention would flip every sign at once.</p>
+  </section>
+    </div>
+
+    <div class="side">
+      <section class="card" aria-labelledby="pencilHead">
+        <div class="eyebrow" id="pencilHead">Pencil parameter</div>
+        <div class="timeline" id="timeline"><svg id="tlsvg" aria-hidden="true"></svg></div>
+        <input type="range" id="lam" min="0" max="1" step="0.0005" aria-label="lambda">
+        <div class="row">
+          <button class="primary" id="play">Play</button>
+          <button id="prev">◀ Previous line</button>
+          <button id="next">Next line ▶</button>
+          <label class="row muted" style="gap:6px;font-size:13px;"><input type="checkbox" id="ghosts"> show all real lines</label>
+        </div>
+        <div class="check" id="sigline"></div>
+      </section>
+
+      <section class="card" id="lineCard" aria-live="polite">
+        <div class="eyebrow">Line on the current member</div>
+        <h2><span id="lineTitle">—</span><span class="chip" id="indexChip"></span></h2>
+        <div class="formula">ind<sub>Q</sub>(L) = ⟨ −Res(F<sub>1</sub>, F<sub>2</sub>) · Σ<sub>p</sub> Q(p) ⁄ (F<sub>⊥</sub>(p) · F<sub>H</sub>′(p)) ⟩</div>
+        <div>
+          <label for="theta" class="eyebrow">Plane H through L</label>
+          <input type="range" id="theta" min="0" max="3.14159" step="0.002">
+        </div>
+        <canvas id="inset" aria-label="Plane section H ∩ X: the line L plus a cubic curve, with its three nodes on L"></canvas>
+        <div class="tablewrap"><table id="nodeTable"></table></div>
+        <div class="check" id="checkline"></div>
+      </section>
+    </div>
+  </div>
+
+
+</div>
+
+<script>
+const DATA = __DATA__;
+(function(){
+"use strict";
+const L = DATA.lines, RB = DATA.ballR, mons = DATA.mons;
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function hex(c){ // "#rrggbb" -> [r,g,b] 0..1
+  const m = c.replace('#',''); return [0,2,4].map(i=>parseInt(m.slice(i,i+2),16)/255);
+}
+// ---------- polynomial helpers ----------
+function evalP(coef, x,y,z){ let s=0; for(let i=0;i<mons.length;i++){const m=mons[i]; s+=coef[i]*Math.pow(x,m[0])*Math.pow(y,m[1])*Math.pow(z,m[2]);} return s; }
+let lam = 0;
+function Pcoef(){ return DATA.f.map((v,i)=>v - lam*DATA.Q[i]); }
+const pv = (c,t)=>{ let s=0; for(let k=c.length-1;k>=0;k--) s=s*t+c[k]; return s; };
+// complex
+const C = { add:(a,b)=>[a[0]+b[0],a[1]+b[1]], sub:(a,b)=>[a[0]-b[0],a[1]-b[1]], mul:(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]],
+  div:(a,b)=>{const d=b[0]*b[0]+b[1]*b[1];return[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];} };
+function cpv(c,z){ let s=[0,0]; for(let k=c.length-1;k>=0;k--) s=C.add(C.mul(s,z),[c[k],0]); return s; }
+function deriv(c){ return c.slice(1).map((v,k)=>v*(k+1)); }
+function cubicRoots(c){ // c[0]+c[1]t+c[2]t^2+c[3]t^3, Durand-Kerner
+  const a3=c[3]; const m=[c[0]/a3,c[1]/a3,c[2]/a3,1];
+  let z=[[0.4,0.9],[-0.8,0.3],[0.2,-1.1]];
+  for(let it=0;it<200;it++){
+    z=z.map((zi,i)=>{ let den=[1,0]; z.forEach((zj,j)=>{ if(j!==i) den=C.mul(den,C.sub(zi,zj)); }); return C.sub(zi,C.div(cpv(m,zi),den)); });
+  }
+  const d=deriv(m);
+  z=z.map(zi=>{ for(let k=0;k<3;k++) zi=C.sub(zi,C.div(cpv(m,zi),cpv(d,zi))); return zi; });
+  return z;
+}
+// ---------- WebGL ----------
+function matInv(M){ const n=M.length; const A=M.map((r,i)=>[...r,...Array.from({length:n},(_,j)=>i===j?1:0)]);
+  for(let c=0;c<n;c++){ let p=c; for(let r=c+1;r<n;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r; [A[c],A[p]]=[A[p],A[c]];
+    const d=A[c][c]; for(let j=0;j<2*n;j++) A[c][j]/=d;
+    for(let r=0;r<n;r++) if(r!==c){ const f=A[r][c]; for(let j=0;j<2*n;j++) A[r][j]-=f*A[c][j]; } }
+  return A.map(r=>r.slice(n)); }
+
+const cv=$('gl'); const gl=cv.getContext('webgl',{antialias:false,preserveDrawingBuffer:true});
+let glOK=!!gl;
+const pw = (v,e)=> e===0?'1.0':Array(e).fill(v).join('*');
+const polyExpr = mons.map((m,i)=>`u[${i}]*${pw('x',m[0])}*${pw('y',m[1])}*${pw('z',m[2])}`).join('+');
+const nodesS=[-1,-0.5,0,0.5,1]; const invV=matInv(nodesS.map(x=>[1,x,x*x,x*x*x,x*x*x*x]));
+const interp=[0,1,2,3,4].map(j=>`float k${j}=`+[0,1,2,3,4].map(k=>`(${invV[j][k].toFixed(9)})*p${k}`).join('+')+';').join('\n    ');
+const fs = `precision highp float;
+uniform float u[35]; uniform vec2 res; uniform vec3 camPos, camF, camR, camU; uniform float RB;
+uniform vec3 bg, cA, cB, cLine, cPlane, cNode, cBall;
+uniform vec3 segA[12]; uniform vec3 segB[12]; uniform float segOn[12];
+uniform vec3 nodeP[3]; uniform float nodeOn[3];
+uniform vec3 plC, plU, plV; uniform float plOn;
+float P(vec3 p){ float x=p.x,y=p.y,z=p.z; return ${polyExpr}; }
+vec3 grad(vec3 p){ float e=1e-3; return vec3(P(p+vec3(e,0,0))-P(p-vec3(e,0,0)),P(p+vec3(0,e,0))-P(p-vec3(0,e,0)),P(p+vec3(0,0,e))-P(p-vec3(0,0,e))); }
+void main(){
+  vec2 q=(gl_FragCoord.xy-0.5*res)/res.y;
+  vec3 rd=normalize(camF*1.7+q.x*camR+q.y*camU); vec3 ro=camPos;
+  float b=dot(ro,rd), c=dot(ro,ro)-RB*RB, h=b*b-c;
+  vec3 col=bg; float tHit=1e9; vec3 hitCol=bg; bool any=false;
+  if(h>0.0){
+    float t0=max(-b-sqrt(h),0.0), t1=-b+sqrt(h);
+    col=mix(bg,cBall,0.55);
+    // surface: restrict P to the ray as a quartic in s in [-1,1], then march cheaply
+    float tm=0.5*(t0+t1), th=0.5*(t1-t0);
+    float p0=P(ro+rd*(tm-th)), p1=P(ro+rd*(tm-0.5*th)), p2=P(ro+rd*tm), p3=P(ro+rd*(tm+0.5*th)), p4=P(ro+rd*(tm+th));
+    ${interp}
+    const int N=240; float ds=2.0/float(N); float sp=-1.0; float vp=p0;
+    for(int i=1;i<=N;i++){
+      float sv=-1.0+ds*float(i); float v=(((k4*sv+k3)*sv+k2)*sv+k1)*sv+k0;
+      if(v*vp<=0.0){ float lo=sp, hi=sv, vlo=vp;
+        for(int k=0;k<16;k++){ float mid=0.5*(lo+hi); float vm=(((k4*mid+k3)*mid+k2)*mid+k1)*mid+k0; if(vm*vlo<=0.0){hi=mid;}else{lo=mid;vlo=vm;} }
+        tHit=tm+th*0.5*(lo+hi); break; }
+      sp=sv; vp=v;
+    }
+    if(tHit<1e8){
+      vec3 p=ro+rd*tHit; vec3 g=grad(p); vec3 n=normalize(g);
+      float side=dot(g,rd); vec3 base= side<0.0 ? cA : cB; if(dot(n,rd)>0.0) n=-n;
+      vec3 l1=normalize(vec3(0.5,0.8,0.6)); float dif=max(dot(n,l1),0.0)*0.65+max(dot(n,-rd),0.0)*0.35;
+      float spec=pow(max(dot(reflect(-l1,n),-rd),0.0),40.0)*0.35;
+      hitCol=base*(0.28+0.8*dif)+vec3(spec); any=true;
+    }
+    // segments
+    for(int i=0;i<12;i++){ if(segOn[i]>0.0){
+      vec3 a=segA[i], d=segB[i]-segA[i]; float L2=dot(d,d);
+      vec3 w=ro-a; float A=dot(rd,rd), B=dot(rd,d), Cc=L2, D=dot(rd,w), E=dot(d,w);
+      float den=A*Cc-B*B; if(den>1e-9){ float s=(B*E-Cc*D)/den; float tt=clamp((A*E-B*D)/den,0.0,1.0);
+        s=dot(a+d*tt-ro,rd); vec3 cp=ro+rd*s; float dist=length(cp-(a+d*tt));
+        float rad= segOn[i]>0.5 ? 0.035 : 0.018;
+        if(s>0.0 && dist<rad){ float ts=s-sqrt(rad*rad-dist*dist); if(ts<tHit+ (segOn[i]>0.5?0.03:0.0)){ tHit=min(ts,tHit);
+          float sh=0.6+0.4*sqrt(1.0-dist*dist/(rad*rad)); hitCol= segOn[i]>0.5 ? cLine*sh : mix(cLine,bg,0.45)*sh; any=true; } } } } }
+    // nodes
+    for(int i=0;i<3;i++){ if(nodeOn[i]>0.0){ vec3 oc=ro-nodeP[i]; float bb=dot(oc,rd), cc=dot(oc,oc)-0.075*0.075, hh=bb*bb-cc;
+      if(hh>0.0){ float ts=-bb-sqrt(hh); if(ts>0.0 && ts<tHit+0.05){ tHit=ts; vec3 n=normalize(oc+rd*ts); hitCol=cNode*(0.45+0.6*max(dot(n,normalize(vec3(0.5,0.8,0.6))),0.0)); any=true; } } } }
+    if(any) col=hitCol;
+    // plane disk (translucent)
+    if(plOn>0.0){ vec3 nrm=normalize(cross(plU,plV)); float dn=dot(rd,nrm);
+      if(abs(dn)>1e-5){ float tp2=dot(plC-ro,nrm)/dn; vec3 pp=ro+rd*tp2-plC; float s1=dot(pp,plU), s2=dot(pp,plV);
+        if(tp2>0.0 && tp2<tHit && s1*s1+s2*s2<2.4*2.4 && dot(ro+rd*tp2,ro+rd*tp2)<RB*RB){
+          float grid = (abs(fract(s1*2.0)-0.5)<0.03 || abs(fract(s2*2.0)-0.5)<0.03) ? 0.12 : 0.0;
+          col=mix(col,cPlane,0.26+grid); } } }
+  }
+  gl_FragColor=vec4(col,1.0);
+}`;
+const vs=`attribute vec2 p; void main(){gl_Position=vec4(p,0.0,1.0);}`;
+let prog, U={};
+function sh(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+if(glOK){ try{
+  prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  ['u','res','camPos','camF','camR','camU','RB','bg','cA','cB','cLine','cPlane','cNode','cBall','segA','segB','segOn','nodeP','nodeOn','plC','plU','plV','plOn']
+    .forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+}catch(e){ console.error(e); glOK=false; } }
+if(!glOK){ const ctx=cv.getContext('2d'); if(ctx){ctx.fillStyle=css('--muted');ctx.font='14px sans-serif';ctx.fillText('WebGL is unavailable in this browser.',20,40);} }
+
+// camera
+let yaw=0.7, pitch=0.35, dist=12.5, interacting=false, dirty=true, settleTimer=null;
+function camera(){
+  const cp=Math.cos(pitch), pos=[dist*cp*Math.cos(yaw), dist*Math.sin(pitch), dist*cp*Math.sin(yaw)];
+  const f=pos.map(v=>-v/dist); const up=[0,1,0];
+  let r=[f[1]*up[2]-f[2]*up[1], f[2]*up[0]-f[0]*up[2], f[0]*up[1]-f[1]*up[0]]; const rn=Math.hypot(...r); r=r.map(v=>v/rn);
+  const u=[r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]];
+  return {pos,f,r,u};
+}
+let active=null, theta=0, nodes=[];
+function clipSeg(p,d){ // line p + t d (|d|=1), clip to ball
+  const b=p[0]*d[0]+p[1]*d[1]+p[2]*d[2], c=p[0]**2+p[1]**2+p[2]**2-RB*RB, h=b*b-c; if(h<=0) return null;
+  const t0=-b-Math.sqrt(h), t1=-b+Math.sqrt(h); return [p.map((v,i)=>v+t0*d[i]), p.map((v,i)=>v+t1*d[i])];
+}
+function render(){
+  if(!glOK) return;
+  const scale = interacting ? 0.55 : 1.0;
+  const dpr=Math.min(window.devicePixelRatio||1,1.5)*scale;
+  const w=Math.round(cv.clientWidth*dpr), h=Math.round(cv.clientHeight*dpr);
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  gl.viewport(0,0,w,h);
+  gl.uniform1fv(U.u,new Float32Array(Pcoef()));
+  gl.uniform2f(U.res,w,h);
+  const cam=camera(); gl.uniform3fv(U.camPos,cam.pos); gl.uniform3fv(U.camF,cam.f); gl.uniform3fv(U.camR,cam.r); gl.uniform3fv(U.camU,cam.u);
+  gl.uniform1f(U.RB,RB);
+  gl.uniform3fv(U.bg,hex(css('--panel'))); gl.uniform3fv(U.cA,hex(css('--surf'))); gl.uniform3fv(U.cB,hex(css('--surf2')));
+  gl.uniform3fv(U.cLine,hex(css('--line'))); gl.uniform3fv(U.cPlane,hex(css('--plane'))); gl.uniform3fv(U.cNode,hex(css('--node'))); gl.uniform3fv(U.cBall,hex(css('--ball')));
+  const A=[],B=[],on=[]; const ghosts=$('ghosts').checked;
+  for(let i=0;i<12;i++){ const l=L[i]; const sgm=l?clipSeg(l.p,l.dir):null;
+    if(sgm && (l===active || ghosts)){A.push(...sgm[0]);B.push(...sgm[1]);on.push(l===active?1:0.25);} else {A.push(0,0,0);B.push(0,0,0);on.push(0);} }
+  gl.uniform3fv(U.segA,new Float32Array(A)); gl.uniform3fv(U.segB,new Float32Array(B)); gl.uniform1fv(U.segOn,new Float32Array(on));
+  const NP=[],NO=[]; for(let i=0;i<3;i++){ const n=nodes[i]; if(active&&n&&n.real&&n.inBall){NP.push(...n.pos);NO.push(1);} else {NP.push(0,0,0);NO.push(0);} }
+  gl.uniform3fv(U.nodeP,new Float32Array(NP)); gl.uniform1fv(U.nodeOn,new Float32Array(NO));
+  if(active){ const v=planeV(); const c=planeCenter(); gl.uniform3fv(U.plC,c); gl.uniform3fv(U.plU,active.dir); gl.uniform3fv(U.plV,v); gl.uniform1f(U.plOn,1); }
+  else gl.uniform1f(U.plOn,0);
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+}
+function planeV(){ const a=active; return a.n1.map((v,i)=>Math.cos(theta)*v+Math.sin(theta)*a.n2[i]); }
+function planeCenter(){ const a=active; const rs=nodes.filter(n=>n.real&&n.inBall).map(n=>n.t);
+  const tc = rs.length? rs.reduce((x,y)=>x+y,0)/rs.length : 0; return a.p.map((v,i)=>v+tc*a.dir[i]); }
+function loop(){ if(dirty){ dirty=false; render(); } requestAnimationFrame(loop); }
+const touch=()=>{dirty=true;};
+
+// orbit controls
+let drag=null;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);interacting=true;});
+cv.addEventListener('pointermove',e=>{ if(!drag) return; yaw+= (e.clientX-drag.x)*0.008; pitch=Math.max(-1.45,Math.min(1.45,pitch+(e.clientY-drag.y)*0.008)); drag={x:e.clientX,y:e.clientY}; touch(); });
+const endDrag=()=>{drag=null; interacting=false; touch();};
+cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('wheel',e=>{e.preventDefault(); dist=Math.max(4.5,Math.min(16,dist*Math.exp(e.deltaY*0.001))); interacting=true; touch();
+  clearTimeout(settleTimer); settleTimer=setTimeout(()=>{interacting=false;touch();},180);},{passive:false});
+
+// ---------- lambda slider + timeline ----------
+const lmin=DATA.lamMin, lmax=DATA.lamMax; const lamS=$('lam');
+const toS = v=>(v-lmin)/(lmax-lmin), fromS = s=>lmin+s*(lmax-lmin);
+function drawTimeline(){
+  const svg=$('tlsvg'); const W=svg.clientWidth||300; let s='';
+  s+=`<line x1="0" x2="${W}" y1="26" y2="26" stroke="var(--rule)" stroke-width="1"/>`;
+  L.forEach((l,i)=>{ const x=toS(l.lam)*W; const col=l.sign>0?'var(--pos)':'var(--neg)'; const on=(active===l);
+    s+=`<g style="cursor:pointer" data-i="${i}"><line x1="${x}" x2="${x}" y1="${on?4:12}" y2="30" stroke="${col}" stroke-width="${on?3:2}"/>`+
+       `<rect x="${x-6}" y="0" width="12" height="34" fill="transparent"/></g>`; });
+  const xc=toS(lam)*W; s+=`<polygon points="${xc-5},34 ${xc+5},34 ${xc},28" fill="var(--ink)"/>`;
+  svg.innerHTML=s;
+  svg.querySelectorAll('g[data-i]').forEach(g=>g.addEventListener('click',()=>{ stopPlay(); goLine(+g.dataset.i); }));
+}
+$('timeline').style.pointerEvents='auto'; $('tlsvg').style.pointerEvents='auto';
+function setLam(v, snap){
+  lam=v;
+  let hit=null; const tol=(lmax-lmin)*0.006;
+  L.forEach(l=>{ if(Math.abs(l.lam-v)<tol) hit=l; });
+  if(hit && snap){ lam=hit.lam; }
+  if(hit && Math.abs(hit.lam-lam)<1e-9){ if(active!==hit){ active=hit; chooseTheta(); } }
+  else active=null;
+  lamS.value=toS(lam);
+  $('hudLam').textContent=`λ = ${lam.toFixed(4)}`;
+  updateLine(); drawTimeline(); touch();
+}
+lamS.addEventListener('input',()=>{ stopPlay(); setLam(fromS(+lamS.value), true); });
+function goLine(i){ setLam(L[i].lam,true); }
+$('next').addEventListener('click',()=>{ stopPlay(); const nx=L.find(l=>l.lam>lam+1e-9); goLine(L.indexOf(nx||L[0])); });
+$('prev').addEventListener('click',()=>{ stopPlay(); const pr=[...L].reverse().find(l=>l.lam<lam-1e-9); goLine(L.indexOf(pr||L[L.length-1])); });
+$('ghosts').addEventListener('change',touch);
+
+let playing=false, lastT=0;
+function stopPlay(){ playing=false; interacting=false; touch(); $('play').textContent= active?'Continue':'Play'; }
+$('play').addEventListener('click',()=>{ if(playing){stopPlay();return;} playing=true; $('play').textContent='Pause'; lastT=performance.now();
+  if(lam>=lmax-1e-6) setLam(lmin,false); requestAnimationFrame(step); });
+function step(t){ if(!playing) return; const dt=Math.min(t-lastT,50); lastT=t; const speed=(lmax-lmin)/22000;
+  const nv=lam+speed*dt; const crossed=L.find(l=>l.lam>lam && l.lam<=nv);
+  if(crossed){ setLam(crossed.lam,true); stopPlay(); return; }
+  if(nv>=lmax){ setLam(lmax,false); stopPlay(); $('play').textContent='Play'; return; }
+  interacting=true; setLam(nv,false); requestAnimationFrame(step); }
+
+// ---------- line panel ----------
+function lineData(){ // nodes for current theta
+  const a=active; const ct=Math.cos(theta), st=Math.sin(theta);
+  const FH=a.F1.map((v,i)=>ct*v+st*a.F2[i]), FP=a.F1.map((v,i)=>-st*v+ct*a.F2[i]);
+  if(Math.abs(FH[3])<1e-9*Math.max(...FH.map(Math.abs))) return {FH,FP,nodes:[],degenerate:true};
+  const rts=cubicRoots(FH); const dFH=deriv(FH);
+  const ns=rts.map(z=>{ const real=Math.abs(z[1])<1e-7*(1+Math.abs(z[0]));
+    const qz=cpv(a.q,z), fp=cpv(FP,z), rot=cpv(dFH,z); const disp=C.div(qz,fp); const term=C.div(disp,rot);
+    const kappa=C.mul([-a.res,0],term);
+    const t=z[0]; const pos=a.p.map((v,i)=>v+t*a.dir[i]+0); const inBall=real && Math.hypot(...pos)<RB;
+    return {z,real,t,disp,rot,term,kappa,pos,inBall}; });
+  ns.sort((x,y)=> (y.real-x.real) || (x.z[0]-y.z[0]) || (x.z[1]-y.z[1]));
+  return {FH,FP,nodes:ns,degenerate:false};
+}
+function chooseTheta(){ let best=0,bs=-1; for(let k=0;k<180;k++){ theta=k*Math.PI/180; const d=lineData(); if(d.degenerate) continue;
+    const rt=d.nodes.filter(n=>n.real&&n.inBall).map(n=>n.t).sort((x,y)=>x-y);
+    let gap=0; if(rt.length>1){ gap=Infinity; for(let i=1;i<rt.length;i++) gap=Math.min(gap,rt[i]-rt[i-1]); }
+    const spread = rt.length? rt[rt.length-1]-rt[0] : 0;
+    const sc=rt.length*10 + Math.min(gap,1.2)*3 - Math.max(0,spread-4.5);
+    if(sc>bs){bs=sc;best=theta;} } theta=best; $('theta').value=theta; }
+$('theta').addEventListener('input',()=>{ theta=+$('theta').value; updateLine(); touch(); });
+const fmt=(v,d=4)=>{ const a=Math.abs(v); if(a!==0&&(a>=1e5||a<1e-3)) return v.toExponential(2).replace('e+','e'); return v.toFixed(d); };
+const fmtC=z=> Math.abs(z[1])<1e-9 ? fmt(z[0]) : `${fmt(z[0],3)}${z[1]<0?'−':'+'}${fmt(Math.abs(z[1]),3)}i`;
+function updateLine(){
+  const card=$('lineCard');
+  if(!active){ card.classList.add('offline'); $('lineTitle').textContent='No line on this member';
+    $('indexChip').textContent=''; $('indexChip').className='chip'; $('nodeTable').innerHTML=''; $('hudLine').hidden=true;
+    $('checkline').textContent='Move λ to a tick mark, or press Play: the sweep stops at each member that contains a real line.';
+    nodes=[]; drawInset(); return; }
+  card.classList.remove('offline');
+  const d=lineData(); nodes=d.nodes;
+  $('lineTitle').innerHTML=`${active.name} <span class="muted num" style="font-size:14px;font-family:var(--mono)">on X<sub>λ</sub>, λ = ${active.lam.toFixed(4)}</span>`;
+  const chip=$('indexChip'); chip.textContent= active.sign>0?'index ⟨+1⟩':'index ⟨−1⟩'; chip.className='chip '+(active.sign>0?'pos':'neg');
+  $('hudLine').hidden=false; $('hudLine').textContent=`${active.name}: index ${active.sign>0?'+1':'−1'}`;
+  // table: group conjugates
+  let rows=[]; const used=new Set();
+  d.nodes.forEach((n,i)=>{ if(used.has(i)) return; used.add(i);
+    if(n.real) rows.push({label:`p${rows.length+1}`,where:fmt(n.t,3),disp:fmt(n.disp[0]),rot:fmt(n.rot[0]),k:n.kappa[0]});
+    else { const j=d.nodes.findIndex((m,jj)=>!used.has(jj)&&!m.real); if(j>=0) used.add(j);
+      rows.push({label:'p, p̄',where:fmtC(n.z),disp:'conj.',rot:'pair',k:2*n.kappa[0]}); } });
+  const sum=rows.reduce((s,r)=>s+r.k,0); const delta=active.c.reduce((s,v,k)=>s+v*active.q[k],0);
+  const mx=Math.max(...rows.map(r=>Math.abs(r.k)),Math.abs(sum),1e-12);
+  const bar=v=>`<span class="bar" style="width:${Math.round(56*Math.abs(v)/mx)}px;background:${v>0?'var(--pos)':'var(--neg)'}"></span>`;
+  let h=`<tr><th>node</th><th>t on L</th><th>Q/F<sub>⊥</sub></th><th>F<sub>H</sub>′</th><th>contribution</th><th></th></tr>`;
+  rows.forEach(r=>{ h+=`<tr><td>${r.label}</td><td>${r.where}</td><td>${r.disp}</td><td>${r.rot}</td><td>${fmt(r.k,2)}</td><td style="text-align:left">${bar(r.k)}</td></tr>`; });
+  h+=`<tr class="sum"><td>sum</td><td colspan="3" style="text-align:right;font-family:var(--sans);color:var(--muted)">× −Res(F₁,F₂) = ${fmt(-active.res,1)} included</td><td>${fmt(sum,2)}</td><td style="text-align:left">${bar(sum)}</td></tr>`;
+  $('nodeTable').innerHTML=h;
+  const rel=Math.abs(sum-delta)/Math.abs(delta);
+  $('checkline').innerHTML=`Check: det[Q|<sub>L</sub>, uF₁, uF₂, rF₁, rF₂] = ${fmt(delta,2)}; the node sum agrees to ${rel<1e-6?'within 10⁻⁶':rel.toExponential(1)}. Rotate H and the terms change while the sum does not.`;
+  drawInset(d);
+}
+// ---------- inset: plane section ----------
+const ic=$('inset'); const ictx=ic.getContext('2d');
+function drawInset(d){
+  const dpr=Math.min(window.devicePixelRatio||1,2); const W=Math.round(ic.clientWidth*dpr), H=Math.round(ic.clientHeight*dpr);
+  if(ic.width!==W||ic.height!==H){ic.width=W;ic.height=H;}
+  const g=ictx; g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,W,H);
+  g.fillStyle=css('--soft'); g.fillRect(0,0,W,H);
+  if(!active){ g.fillStyle=css('--muted'); g.font=`${13*dpr}px ${css('--sans')}`; g.fillText('The plane section appears when λ sits on a line.',14*dpr,24*dpr); return; }
+  d=d||lineData();
+  const a=active, v=planeV();
+  const real=d.nodes.filter(n=>n.real); const tc= real.length? real.reduce((s,n)=>s+n.t,0)/real.length:0;
+  const T=3.4, S=T*H/W; const X=t=>(t-(tc-T))/(2*T)*W, Y=s=>H/2 - s/S*H/2;
+  const P=Pcoef();
+  const F=(t,s)=>{ const x=a.p[0]+t*a.dir[0]+s*v[0], y=a.p[1]+t*a.dir[1]+s*v[1], z=a.p[2]+t*a.dir[2]+s*v[2]; return evalP(P,x,y,z); };
+  // ball boundary within plane
+  const pc=a.p.map((x,i)=>x+tc*a.dir[i]);
+  // shade region outside the ball
+  const nx=150, ny=101; const vals=new Float32Array((nx+1)*(ny+1));
+  for(let j=0;j<=ny;j++){ const s=S*(2*(j+0.5)/(ny+1)-1)*-1; for(let i=0;i<=nx;i++){ const t=tc-T+2*T*i/nx; vals[j*(nx+1)+i]=F(t,s)/s; } }
+  g.lineWidth=2*dpr; g.strokeStyle=css('--surf'); g.setLineDash([6*dpr,4*dpr]); g.beginPath();
+  const px=i=>i/nx*W, py=j=>(j+0.5)/(ny+1)*H;
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+    const v00=vals[j*(nx+1)+i], v10=vals[j*(nx+1)+i+1], v01=vals[(j+1)*(nx+1)+i], v11=vals[(j+1)*(nx+1)+i+1];
+    const pts=[]; const e=(va,vb,xa,ya,xb,yb)=>{ if((va<0)!==(vb<0)){ const f=va/(va-vb); pts.push([xa+(xb-xa)*f, ya+(yb-ya)*f]); } };
+    e(v00,v10,px(i),py(j),px(i+1),py(j)); e(v10,v11,px(i+1),py(j),px(i+1),py(j+1)); e(v01,v11,px(i),py(j+1),px(i+1),py(j+1)); e(v00,v01,px(i),py(j),px(i),py(j+1));
+    if(pts.length>=2){ g.moveTo(pts[0][0],pts[0][1]); g.lineTo(pts[1][0],pts[1][1]); if(pts.length===4){ g.moveTo(pts[2][0],pts[2][1]); g.lineTo(pts[3][0],pts[3][1]); } } }
+  g.stroke(); g.setLineDash([]);
+  // the line L
+  g.strokeStyle=css('--line'); g.lineWidth=3*dpr; g.beginPath(); g.moveTo(0,H/2); g.lineTo(W,H/2); g.stroke();
+  g.fillStyle=css('--muted'); g.font=`${12*dpr}px ${css('--mono')}`; g.fillText('L',8*dpr,H/2-8*dpr); g.fillText('cubic curve  C_H',8*dpr,16*dpr);
+  // nodes
+  let k=0; d.nodes.forEach(n=>{ if(!n.real) return; k++; const x=X(n.t);
+    g.fillStyle=css('--node'); g.beginPath(); g.arc(x,H/2,6*dpr,0,2*Math.PI); g.fill();
+    g.fillStyle=css('--ink'); g.fillText(`p${k}`,x+8*dpr,H/2+18*dpr); });
+  const nc=d.nodes.filter(n=>!n.real).length; if(nc){ g.fillStyle=css('--muted'); g.fillText(`+ ${nc} complex conjugate nodes`, 8*dpr, H-10*dpr); }
+}
+// theme changes
+const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener&&mq.addEventListener('change',()=>{touch();updateLine();drawTimeline();});
+new MutationObserver(()=>{touch();updateLine();drawTimeline();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+window.addEventListener('resize',()=>{touch();drawTimeline();updateLine();});
+// signature line
+const sig=L.reduce((s,l)=>s+l.sign,0);
+$('nreal').textContent=L.length;
+$('sigline').innerHTML=`${L.length} real lines of 320. Sum of local indices over ℝ: <span class="num">${sig>0?'+':''}${sig}</span>, the signature of n(Q). Ticks: <span style="color:var(--pos)">index +1</span> / <span style="color:var(--neg)">index −1</span>.`;
+// initial state: the line closest to the origin
+let start=0, bd=1e9; L.forEach((l,i)=>{ const dd=Math.hypot(...l.p); if(dd<bd){bd=dd;start=i;} });
+setLam(L[start].lam,true); $('play').textContent='Continue';
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
